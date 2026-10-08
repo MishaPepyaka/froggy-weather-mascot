@@ -1,0 +1,164 @@
+#!/usr/bin/env bash
+# Compact child-friendly weather briefing for the Hyprlock screen.
+set -euo pipefail
+
+mode="${1:-current}"
+cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/lock-weather"
+cache_file="$cache_dir/winnipeg.json"
+asset_dir="$HOME/.local/share/lockscreen"
+mascot_link="$cache_dir/mascot.png"
+override_file="$cache_dir/mascot-override"
+api_url='https://api.open-meteo.com/v1/forecast?latitude=49.8951&longitude=-97.1384&current=temperature_2m,apparent_temperature,precipitation,rain,showers,snowfall,weather_code,wind_speed_10m&hourly=temperature_2m,apparent_temperature,precipitation_probability,precipitation,weather_code&forecast_days=2&timezone=America%2FWinnipeg'
+
+morning_scenes=(frog-brush-teeth.png frog-breakfast.png)
+bedtime_scenes=(frog-read-bed.png frog-brush-teeth.png frog-bath.png)
+evening_scenes=(frog-tea.png frog-hammock.png frog-console.png)
+
+mkdir -p "$cache_dir"
+if [[ ! -s "$cache_file" ]] || [[ $(find "$cache_file" -mmin +15 -print) ]]; then
+  temporary_file="$(mktemp "$cache_dir/winnipeg.XXXXXX")"
+  if curl --fail --silent --show-error --max-time 8 "$api_url" -o "$temporary_file" && jq -e '.current.temperature_2m' "$temporary_file" >/dev/null; then
+    mv "$temporary_file" "$cache_file"
+  else
+    rm -f "$temporary_file"
+  fi
+fi
+
+weather_available=false
+[[ -s "$cache_file" ]] && weather_available=true
+
+weather_icon() {
+  case "$1" in
+    0) printf '☀' ;; 1|2) printf '⛅' ;; 3) printf '☁' ;;
+    45|48) printf '≋' ;; 51|53|55|56|57|61|63|65|66|67|80|81|82) printf '☂' ;;
+    71|73|75|77|85|86) printf '❄' ;; 95|96|99) printf '⚡' ;;
+    *) printf '☁' ;;
+  esac
+}
+
+update_mascot() {
+  local code temperature feels wind source hour slot routine_end variant alternate override_source override_until
+  if [[ "$weather_available" == true ]]; then
+    code="$(jq -r '.current.weather_code' "$cache_file")"
+    temperature="$(jq -r '.current.temperature_2m | round' "$cache_file")"
+    feels="$(jq -r '.current.apparent_temperature | round' "$cache_file")"
+    wind="$(jq -r '.current.wind_speed_10m | round' "$cache_file")"
+  else
+    code=0
+    temperature=10
+    feels=10
+    wind=0
+  fi
+  source="$asset_dir/frog-mild-v2.png"
+  routine_end=0
+  hour="${LOCK_WEATHER_HOUR:-$(date +%H)}"
+  hour=$((10#$hour))
+
+  # Bedtime and morning routines intentionally take precedence over outdoor weather.
+  if (( hour >= 22 || hour < 7 )); then
+    source="$asset_dir/frog-sleep.png"
+  elif (( hour >= 7 && hour < 8 )); then
+    slot="${LOCK_WEATHER_MORNING_SLOT:-$(( ($(date +%s) / 900) % ${#morning_scenes[@]} ))}"
+    slot=$((10#$slot % ${#morning_scenes[@]}))
+    source="$asset_dir/${morning_scenes[slot]}"
+    routine_end="$(date -d 'today 08:00' +%s)"
+  elif (( hour >= 21 && hour < 22 )); then
+    slot="${LOCK_WEATHER_HYGIENE_SLOT:-$(( ($(date +%s) / 900) % ${#bedtime_scenes[@]} ))}"
+    slot=$((10#$slot % ${#bedtime_scenes[@]}))
+    source="$asset_dir/${bedtime_scenes[slot]}"
+    routine_end="$(date -d 'today 22:00' +%s)"
+  elif (( hour >= 18 )); then
+    slot="${LOCK_WEATHER_EVENING_SLOT:-$(( ($(date +%s) / 900) % ${#evening_scenes[@]} ))}"
+    slot=$((10#$slot % ${#evening_scenes[@]}))
+    source="$asset_dir/${evening_scenes[slot]}"
+  # Severe conditions take precedence over temperature during the day.
+  elif [[ "$weather_available" != true ]]; then
+    source="$asset_dir/frog-mild-v2.png"
+  elif (( wind >= 36 )); then
+    source="$asset_dir/frog-hurricane.png"
+  elif [[ "$code" == "45" || "$code" == "48" ]]; then
+    source="$asset_dir/frog-smog.png"
+  elif [[ "$code" =~ ^(71|73|75|77|85|86)$ ]]; then
+    source="$asset_dir/frog-snow.png"
+  elif [[ "$code" =~ ^(95|96|99)$ ]]; then
+    source="$asset_dir/frog-thunderstorm.png"
+  elif [[ "$code" =~ ^(51|53|55|56|57|61|63|65|66|67|80|81|82)$ ]]; then
+    source="$asset_dir/frog-rain.png"
+  elif (( feels < -15 )); then
+    source="$asset_dir/frog-frost.png"
+  elif (( temperature >= 38 )); then
+    source="$asset_dir/frog-ultra-hot.png"
+  elif (( temperature >= 33 )); then
+    source="$asset_dir/frog-very-hot.png"
+  elif (( temperature >= 26 )); then
+    source="$asset_dir/frog-hot.png"
+  elif (( temperature >= 20 )); then
+    source="$asset_dir/frog-warm.png"
+  elif (( temperature >= 10 )); then
+    source="$asset_dir/frog-mild-v2.png"
+  elif (( temperature >= 5 )); then
+    source="$asset_dir/frog-cold-nohat.png"
+  elif (( temperature >= 0 )); then
+    source="$asset_dir/frog-cool.png"
+  else
+    source="$asset_dir/frog-winter.png"
+  fi
+
+  # A click during a scheduled routine keeps that choice until the routine ends.
+  if (( routine_end > 0 )) && [[ -s "$override_file" ]]; then
+    IFS=$'\t' read -r override_source override_until < "$override_file" || true
+    if [[ -f "$override_source" && "$override_until" =~ ^[0-9]+$ ]] && (( override_until > $(date +%s) )); then
+      source="$override_source"
+    else
+      rm -f "$override_file"
+    fi
+  fi
+
+  # Every condition has a second mirrored composition.  Switch every 15 minutes.
+  variant="${LOCK_WEATHER_VARIANT:-$(( ($(date +%s) / 900) % 2 ))}"
+  if [[ "$variant" == "1" ]]; then
+    alternate="${source%.png}-alt.png"
+    [[ -f "$alternate" ]] && source="$alternate"
+  fi
+
+  # Keep the most recently selected mascot ready before Hyprlock opens.
+  ln -sfn "$source" "$mascot_link"
+}
+
+update_mascot
+
+if [[ "$weather_available" != true ]]; then
+  printf 'Weather unavailable'
+  exit 0
+fi
+
+case "$mode" in
+  current)
+    temperature="$(jq -r '.current.temperature_2m | round' "$cache_file")"
+    feels="$(jq -r '.current.apparent_temperature | round' "$cache_file")"
+    printf 'NOW  %s°C  ·  feels like %s°C' "$temperature" "$feels"
+    ;;
+  morning|day|evening)
+    today="$(date +%F)"
+    case "$mode" in
+      morning) hour='08:00'; title='MORNING' ;;
+      day) hour='13:00'; title='AFTERNOON' ;;
+      evening) hour='18:00'; title='EVENING' ;;
+    esac
+    forecast="$(jq -r --arg today "$today" --arg hour "$hour" '
+      .hourly as $h |
+      [range(0; ($h.time|length)) as $i
+       | select($h.time[$i] == ($today + "T" + $hour))
+       | [($h.temperature_2m[$i] | round), ($h.precipitation_probability[$i] | round), $h.weather_code[$i]]
+       | @tsv][0] // empty' "$cache_file")"
+    if [[ -z "$forecast" ]]; then
+      printf '%s\nNo forecast' "$title"
+      exit 0
+    fi
+    IFS=$'\t' read -r temperature _ code <<< "$forecast"
+    printf '<b>%s</b>\n%s°C  %s' "$title" "$temperature" "$(weather_icon "$code")"
+    ;;
+  *)
+    printf 'Unknown weather mode'
+    ;;
+esac

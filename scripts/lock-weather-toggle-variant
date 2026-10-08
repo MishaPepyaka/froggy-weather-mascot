@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+# Toggle the current lock-screen mascot artwork.
+set -euo pipefail
+
+cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/lock-weather"
+mascot_link="$cache_dir/mascot.png"
+override_file="$cache_dir/mascot-override"
+
+[[ -L "$mascot_link" ]] || exit 0
+current="$(readlink -f "$mascot_link")"
+hour="$(date +%H)"
+hour=$((10#$hour))
+
+set_routine_override() {
+  local end_time="$1" end_epoch
+  end_epoch="$(date -d "today $end_time" +%s)"
+  printf '%s\t%s\n' "$target" "$end_epoch" > "$override_file"
+}
+
+if (( hour >= 7 && hour < 8 )); then
+  # Morning routine: teeth and breakfast.
+  case "$(basename "$current")" in
+    frog-brush-teeth.png) target="$HOME/.local/share/lockscreen/frog-breakfast.png" ;;
+    *) target="$HOME/.local/share/lockscreen/frog-brush-teeth.png" ;;
+  esac
+  set_routine_override '08:00'
+elif (( hour >= 21 && hour < 22 )); then
+  # The 21:00 bedtime routine is a three-scene cycle.
+  case "$(basename "$current")" in
+    frog-read-bed.png) target="$HOME/.local/share/lockscreen/frog-brush-teeth.png" ;;
+    frog-brush-teeth.png) target="$HOME/.local/share/lockscreen/frog-bath.png" ;;
+    frog-bath.png) target="$HOME/.local/share/lockscreen/frog-read-bed.png" ;;
+    *-alt.png) target="${current%-alt.png}.png" ;;
+    *) target="${current%.png}-alt.png" ;;
+  esac
+  set_routine_override '22:00'
+else
+  case "$(basename "$current")" in
+    *-alt.png) target="${current%-alt.png}.png" ;;
+    *) target="${current%.png}-alt.png" ;;
+  esac
+fi
+
+[[ -f "$target" ]] && ln -sfn "$target" "$mascot_link"
