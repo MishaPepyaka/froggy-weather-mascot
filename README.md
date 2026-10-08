@@ -12,7 +12,7 @@ A Hyprlock add-on featuring a pixel-art frog on the lock screen. It shows the we
 | 21:00–22:00 | reading in bed, brushing teeth, and a bath, rotating every 15 minutes |
 | All other times | a scene chosen from the current weather and temperature |
 
-Clicking the frog from 07:00–08:00 switches the morning pair; from 21:00–22:00 it cycles through the bedtime trio. A manually selected scene remains in place until that scheduled interval ends. At other times, clicking switches to the mirrored `-alt` image when one exists.
+Clicking the frog from 07:00–08:00 switches the morning pair; from 21:00–22:00 it cycles through the bedtime trio. A manually selected scene remains in place until that scheduled interval ends.
 
 ## Requirements
 
@@ -62,7 +62,7 @@ The main file is [`scripts/lock-weather-winnipeg`](scripts/lock-weather-winnipeg
 - the time intervals are defined in `update_mascot()`;
 - the weather rules follow the schedule and apply only outside scheduled routines.
 
-To replace an illustration, add a PNG to `assets/`, reinstall the project, and reference its filename from the appropriate array. Add a matching `-alt.png` image to support mirrored click switching.
+To replace an illustration, add a PNG to `assets/`, reinstall the project, and reference its filename from the appropriate array.
 
 ## Project layout
 

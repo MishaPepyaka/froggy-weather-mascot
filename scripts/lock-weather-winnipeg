@@ -37,7 +37,7 @@ weather_icon() {
 }
 
 update_mascot() {
-  local code temperature feels wind source hour slot routine_end variant alternate override_source override_until
+  local code temperature feels wind source hour slot routine_end override_source override_until
   if [[ "$weather_available" == true ]]; then
     code="$(jq -r '.current.weather_code' "$cache_file")"
     temperature="$(jq -r '.current.temperature_2m | round' "$cache_file")"
@@ -112,13 +112,6 @@ update_mascot() {
     else
       rm -f "$override_file"
     fi
-  fi
-
-  # Every condition has a second mirrored composition.  Switch every 15 minutes.
-  variant="${LOCK_WEATHER_VARIANT:-$(( ($(date +%s) / 900) % 2 ))}"
-  if [[ "$variant" == "1" ]]; then
-    alternate="${source%.png}-alt.png"
-    [[ -f "$alternate" ]] && source="$alternate"
   fi
 
   # Keep the most recently selected mascot ready before Hyprlock opens.

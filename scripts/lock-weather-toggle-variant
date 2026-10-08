@@ -30,15 +30,11 @@ elif (( hour >= 21 && hour < 22 )); then
     frog-read-bed.png) target="$HOME/.local/share/lockscreen/frog-brush-teeth.png" ;;
     frog-brush-teeth.png) target="$HOME/.local/share/lockscreen/frog-bath.png" ;;
     frog-bath.png) target="$HOME/.local/share/lockscreen/frog-read-bed.png" ;;
-    *-alt.png) target="${current%-alt.png}.png" ;;
-    *) target="${current%.png}-alt.png" ;;
+    *) target="$HOME/.local/share/lockscreen/frog-read-bed.png" ;;
   esac
   set_routine_override '22:00'
 else
-  case "$(basename "$current")" in
-    *-alt.png) target="${current%-alt.png}.png" ;;
-    *) target="${current%.png}-alt.png" ;;
-  esac
+  exit 0
 fi
 
 [[ -f "$target" ]] && ln -sfn "$target" "$mascot_link"
