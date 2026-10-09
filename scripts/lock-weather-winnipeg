@@ -10,9 +10,10 @@ mascot_link="$cache_dir/mascot.png"
 override_file="$cache_dir/mascot-override"
 api_url='https://api.open-meteo.com/v1/forecast?latitude=49.8951&longitude=-97.1384&current=temperature_2m,apparent_temperature,precipitation,rain,showers,snowfall,weather_code,wind_speed_10m&hourly=temperature_2m,apparent_temperature,precipitation_probability,precipitation,weather_code&forecast_days=2&timezone=America%2FWinnipeg'
 
-morning_scenes=(frog-brush-teeth.png frog-breakfast.png)
-bedtime_scenes=(frog-read-bed.png frog-brush-teeth.png frog-bath.png)
-evening_scenes=(frog-tea.png frog-hammock.png frog-console.png)
+sleep_scenes=(frog-sleep-back.png frog-sleep-side.png frog-sleep-across.png)
+morning_scenes=(frog-brush-teeth.png frog-breakfast.png frog-breakfast-pancakes.png)
+bedtime_scenes=(frog-read-bed.png frog-brush-teeth.png frog-bath.png frog-stargaze.png)
+evening_scenes=(frog-tea.png frog-hammock.png frog-console.png frog-draw.png frog-book.png)
 
 mkdir -p "$cache_dir"
 if [[ ! -s "$cache_file" ]] || [[ $(find "$cache_file" -mmin +15 -print) ]]; then
@@ -36,6 +37,17 @@ weather_icon() {
   esac
 }
 
+select_weather_scene() {
+  local primary="$1" extra="$2" slot
+  slot="${LOCK_WEATHER_WEATHER_SLOT:-$(( ($(date +%s) / 900) % 2 ))}"
+  slot=$((10#$slot % 2))
+  if (( slot == 0 )); then
+    source="$asset_dir/$primary"
+  else
+    source="$asset_dir/$extra"
+  fi
+}
+
 update_mascot() {
   local code temperature feels wind source hour slot routine_end override_source override_until
   if [[ "$weather_available" == true ]]; then
@@ -56,7 +68,9 @@ update_mascot() {
 
   # Bedtime and morning routines intentionally take precedence over outdoor weather.
   if (( hour >= 22 || hour < 7 )); then
-    source="$asset_dir/frog-sleep.png"
+    slot="${LOCK_WEATHER_SLEEP_SLOT:-$(( ($(date +%s) / 900) % ${#sleep_scenes[@]} ))}"
+    slot=$((10#$slot % ${#sleep_scenes[@]}))
+    source="$asset_dir/${sleep_scenes[slot]}"
   elif (( hour >= 7 && hour < 8 )); then
     slot="${LOCK_WEATHER_MORNING_SLOT:-$(( ($(date +%s) / 900) % ${#morning_scenes[@]} ))}"
     slot=$((10#$slot % ${#morning_scenes[@]}))
@@ -73,35 +87,35 @@ update_mascot() {
     source="$asset_dir/${evening_scenes[slot]}"
   # Severe conditions take precedence over temperature during the day.
   elif [[ "$weather_available" != true ]]; then
-    source="$asset_dir/frog-mild-v2.png"
+    select_weather_scene frog-mild-v2.png frog-mild-v2-2.png
   elif (( wind >= 36 )); then
-    source="$asset_dir/frog-hurricane.png"
+    select_weather_scene frog-hurricane.png frog-hurricane-2.png
   elif [[ "$code" == "45" || "$code" == "48" ]]; then
-    source="$asset_dir/frog-smog.png"
+    select_weather_scene frog-smog.png frog-smog-2.png
   elif [[ "$code" =~ ^(71|73|75|77|85|86)$ ]]; then
-    source="$asset_dir/frog-snow.png"
+    select_weather_scene frog-snow.png frog-snow-2.png
   elif [[ "$code" =~ ^(95|96|99)$ ]]; then
-    source="$asset_dir/frog-thunderstorm.png"
+    select_weather_scene frog-thunderstorm.png frog-thunderstorm-2.png
   elif [[ "$code" =~ ^(51|53|55|56|57|61|63|65|66|67|80|81|82)$ ]]; then
-    source="$asset_dir/frog-rain.png"
+    select_weather_scene frog-rain.png frog-rain-2.png
   elif (( feels < -15 )); then
-    source="$asset_dir/frog-frost.png"
+    select_weather_scene frog-frost.png frog-frost-2.png
   elif (( temperature >= 38 )); then
-    source="$asset_dir/frog-ultra-hot.png"
+    select_weather_scene frog-ultra-hot.png frog-ultra-hot-2.png
   elif (( temperature >= 33 )); then
-    source="$asset_dir/frog-very-hot.png"
+    select_weather_scene frog-very-hot.png frog-very-hot-2.png
   elif (( temperature >= 26 )); then
-    source="$asset_dir/frog-hot.png"
+    select_weather_scene frog-hot.png frog-hot-2.png
   elif (( temperature >= 20 )); then
-    source="$asset_dir/frog-warm.png"
+    select_weather_scene frog-warm.png frog-warm-2.png
   elif (( temperature >= 10 )); then
-    source="$asset_dir/frog-mild-v2.png"
+    select_weather_scene frog-mild-v2.png frog-mild-v2-2.png
   elif (( temperature >= 5 )); then
-    source="$asset_dir/frog-cold-nohat.png"
+    select_weather_scene frog-cold-nohat.png frog-cold-nohat-2.png
   elif (( temperature >= 0 )); then
-    source="$asset_dir/frog-cool.png"
+    select_weather_scene frog-cool.png frog-cool-2.png
   else
-    source="$asset_dir/frog-winter.png"
+    select_weather_scene frog-winter.png frog-winter-2.png
   fi
 
   # A click during a scheduled routine keeps that choice until the routine ends.

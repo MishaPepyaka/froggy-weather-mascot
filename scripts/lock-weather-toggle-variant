@@ -18,18 +18,20 @@ set_routine_override() {
 }
 
 if (( hour >= 7 && hour < 8 )); then
-  # Morning routine: teeth and breakfast.
+  # Morning routine: teeth and two breakfasts.
   case "$(basename "$current")" in
     frog-brush-teeth.png) target="$HOME/.local/share/lockscreen/frog-breakfast.png" ;;
+    frog-breakfast.png) target="$HOME/.local/share/lockscreen/frog-breakfast-pancakes.png" ;;
     *) target="$HOME/.local/share/lockscreen/frog-brush-teeth.png" ;;
   esac
   set_routine_override '08:00'
 elif (( hour >= 21 && hour < 22 )); then
-  # The 21:00 bedtime routine is a three-scene cycle.
+  # The 21:00 bedtime routine is a four-scene cycle.
   case "$(basename "$current")" in
     frog-read-bed.png) target="$HOME/.local/share/lockscreen/frog-brush-teeth.png" ;;
     frog-brush-teeth.png) target="$HOME/.local/share/lockscreen/frog-bath.png" ;;
-    frog-bath.png) target="$HOME/.local/share/lockscreen/frog-read-bed.png" ;;
+    frog-bath.png) target="$HOME/.local/share/lockscreen/frog-stargaze.png" ;;
+    frog-stargaze.png) target="$HOME/.local/share/lockscreen/frog-read-bed.png" ;;
     *) target="$HOME/.local/share/lockscreen/frog-read-bed.png" ;;
   esac
   set_routine_override '22:00'

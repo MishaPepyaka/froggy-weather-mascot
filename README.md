@@ -6,13 +6,13 @@ A Hyprlock add-on featuring a pixel-art frog on the lock screen. It shows the we
 
 | Time | Scene |
 | --- | --- |
-| 22:00–07:00 | sleeping in bed |
-| 07:00–08:00 | brushing teeth and breakfast, rotating every 15 minutes |
-| 18:00–21:00 | tea, hammock, and console, rotating every 15 minutes |
-| 21:00–22:00 | reading in bed, brushing teeth, and a bath, rotating every 15 minutes |
-| All other times | a scene chosen from the current weather and temperature |
+| 22:00–07:00 | three sleeping poses: back, side, and crosswise in bed |
+| 07:00–08:00 | brushing teeth plus two breakfast scenes, rotating every 15 minutes |
+| 18:00–21:00 | tea, hammock, console, drawing, and a book, rotating every 15 minutes |
+| 21:00–22:00 | reading in bed, brushing teeth, a bath, and stargazing, rotating every 15 minutes |
+| All other times | two distinct scenes for each current weather and temperature condition |
 
-Clicking the frog from 07:00–08:00 switches the morning pair; from 21:00–22:00 it cycles through the bedtime trio. A manually selected scene remains in place until that scheduled interval ends.
+Clicking the frog from 07:00–08:00 cycles through the three morning scenes; from 21:00–22:00 it cycles through the four bedtime scenes. A manually selected scene remains in place until that scheduled interval ends.
 
 ## Requirements
 
@@ -58,7 +58,7 @@ After changing the script in this project, run `./install.sh` again. To force an
 The main file is [`scripts/lock-weather-winnipeg`](scripts/lock-weather-winnipeg):
 
 - `api_url` contains the city coordinates and time zone;
-- the `morning_scenes`, `bedtime_scenes`, and `evening_scenes` arrays define the rotations;
+- the `sleep_scenes`, `morning_scenes`, `bedtime_scenes`, and `evening_scenes` arrays define the time-based rotations;
 - the time intervals are defined in `update_mascot()`;
 - the weather rules follow the schedule and apply only outside scheduled routines.
 
